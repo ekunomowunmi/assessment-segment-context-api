@@ -11,7 +11,7 @@ The Segment-to-Context service is a cloud-native event ingestion and processing 
        │ HTTP POST
        ▼
 ┌─────────────────┐      ┌──────────────┐
-│  FastAPI API    │─────▶│  Pub/Sub     │
+│  Express API    │─────▶│  Pub/Sub     │
 │  (Cloud Run)    │      │  Topic       │
 └─────────────────┘      └──────┬───────┘
                                  │
@@ -65,9 +65,9 @@ If we add features like "get persona with recent events", we would use SQL JOINs
 ### API Scaling (Cloud Run)
 
 **Current Implementation:**
-- Stateless FastAPI application
+- Stateless Express.js application
 - Pub/Sub handles message buffering (decouples API from processing)
-- Database connection pooling via SQLAlchemy
+- Database connection pooling via pg (PostgreSQL client)
 
 **Scaling Configuration:**
 ```yaml
@@ -219,15 +219,18 @@ concurrency: 1  # One message at a time per instance
 
 **Query-Level Isolation:**
 Every database query includes `tenant_id` in the WHERE clause:
-```python
-# ✅ Correct - tenant isolation
-query = select(Event).where(
-    Event.tenant_id == tenant_id,
-    Event.user_id == user_id
-)
+```javascript
+// ✅ Correct - tenant isolation
+const result = await query(
+  'SELECT * FROM events WHERE tenant_id = $1 AND user_id = $2',
+  [tenantId, userId]
+);
 
-# ❌ Wrong - would leak data
-query = select(Event).where(Event.user_id == user_id)
+// ❌ Wrong - would leak data
+const result = await query(
+  'SELECT * FROM events WHERE user_id = $1',
+  [userId]
+);
 ```
 
 **Application-Level Validation:**
@@ -238,7 +241,7 @@ query = select(Event).where(Event.user_id == user_id)
 ## Performance Optimizations
 
 1. **Database Indexes:** Composite indexes optimize common query patterns
-2. **Connection Pooling:** SQLAlchemy connection pool reduces database overhead
+2. **Connection Pooling:** pg connection pool reduces database overhead
 3. **Pub/Sub Buffering:** Decouples API from processing, handles bursts
 4. **Async Processing:** Worker processes messages asynchronously
 5. **Retry Logic:** Exponential backoff prevents overwhelming Vertex AI
@@ -247,8 +250,8 @@ query = select(Event).where(Event.user_id == user_id)
 
 1. **Tenant Isolation:** Database queries enforce tenant boundaries
 2. **Authentication:** (To be implemented) API key or OAuth2
-3. **Input Validation:** Pydantic models validate all inputs
-4. **SQL Injection:** SQLAlchemy ORM prevents SQL injection
+3. **Input Validation:** Zod schemas validate all inputs
+4. **SQL Injection:** Parameterized queries prevent SQL injection
 5. **Secrets Management:** Use Google Secret Manager for credentials
 
 ## Monitoring & Observability
