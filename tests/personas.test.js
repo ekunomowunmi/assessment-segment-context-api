@@ -166,4 +166,28 @@ describe('Persona API', () => {
     expect(response.status).toBe(400);
     expect(response.body.error).toContain('X-Tenant-ID');
   });
+
+  test('GET /api/v1/personas/:user_id - error handling', async () => {
+    query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .get('/api/v1/personas/user-456')
+      .set('X-Tenant-ID', 'test-tenant-123');
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Failed to get persona');
+    expect(response.body.message).toBe('Database error');
+  });
+
+  test('GET /api/v1/personas - error handling', async () => {
+    query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .get('/api/v1/personas')
+      .set('X-Tenant-ID', 'test-tenant-123');
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Failed to list personas');
+    expect(response.body.message).toBe('Database error');
+  });
 });

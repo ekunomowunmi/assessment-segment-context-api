@@ -132,4 +132,13 @@ describe('PubSubService', () => {
       expect(topic).toBe(mockTopic);
     });
   });
+
+  describe('error handling', () => {
+    test('should handle topic.get errors gracefully', async () => {
+      mockTopic.get.mockRejectedValue(new Error('Topic error'));
+      
+      // Should not throw, just log error
+      expect(() => initializePubSub()).not.toThrow();
+    });
+  });
 });

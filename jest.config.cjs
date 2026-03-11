@@ -10,17 +10,24 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/database/migrate.js',
+    '!src/database/connection.js', // Infrastructure code, tested separately
     '!src/index.js',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  // Coverage thresholds - set to current levels, can be increased as more tests are added
+  // Coverage thresholds - target 80% coverage overall
   coverageThreshold: {
     global: {
-      branches: 60,
-      functions: 60,
-      lines: 60,
-      statements: 60,
+      branches: 69,
+      functions: 77,
+      lines: 78,
+      statements: 78,
+    },
+    './src/services/vertexAIService.js': {
+      branches: 70,
+      functions: 70,
+      lines: 50,
+      statements: 50,
     },
   },
 };

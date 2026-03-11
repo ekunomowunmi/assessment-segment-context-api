@@ -102,4 +102,70 @@ describe('Event Ingestion API', () => {
       expect.arrayContaining(['test-tenant-123'])
     );
   });
+
+  test('GET /api/v1/events - filter by user_id', async () => {
+    query.mockResolvedValue({
+      rows: [
+        {
+          id: 'event-1',
+          event_id: 'evt-1',
+          user_id: 'user-1',
+          event_type: 'page_view',
+          event_data: { page: '/home' },
+          created_at: new Date('2024-01-01'),
+        }
+      ],
+    });
+
+    const response = await request(app)
+      .get('/api/v1/events?user_id=user-1')
+      .set('X-Tenant-ID', 'test-tenant-123');
+
+    expect(response.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('AND user_id = $2'),
+      expect.arrayContaining(['test-tenant-123', 'user-1'])
+    );
+  });
+
+  test('POST /api/v1/events/ingest - missing required fields', async () => {
+    const response = await request(app)
+      .post('/api/v1/events/ingest')
+      .set('X-Tenant-ID', 'test-tenant-123')
+      .send({
+        event_id: 'event-123',
+        // Missing user_id, event_type, event_data
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('Missing required fields');
+  });
+
+  test('POST /api/v1/events/ingest - error handling', async () => {
+    checkEventExists.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .post('/api/v1/events/ingest')
+      .set('X-Tenant-ID', 'test-tenant-123')
+      .send({
+        event_id: 'event-123',
+        user_id: 'user-456',
+        event_type: 'page_view',
+        event_data: {}
+      });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Failed to ingest event');
+  });
+
+  test('GET /api/v1/events - error handling', async () => {
+    query.mockRejectedValue(new Error('Database error'));
+
+    const response = await request(app)
+      .get('/api/v1/events')
+      .set('X-Tenant-ID', 'test-tenant-123');
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Failed to list events');
+  });
 });
