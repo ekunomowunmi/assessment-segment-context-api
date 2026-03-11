@@ -10,6 +10,8 @@ export default {
     '!src/database/migrate.js',
     '!src/index.js',
   ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: {
       branches: 70,
