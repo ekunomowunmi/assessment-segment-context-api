@@ -38,4 +38,5 @@ Thumbs.db
 # GCP
 *.json
 !package.json
+!package-lock.json
 service-account-key.json
