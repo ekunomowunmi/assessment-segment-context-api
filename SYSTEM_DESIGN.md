@@ -58,7 +58,7 @@ The Segment-to-Context service is a cloud-native event ingestion and processing 
 - Avoiding eager loading of related data unless necessary
 
 **Future Considerations:**
-If we add features like "get persona with recent events", we would use SQL JOINs or SQLAlchemy's `joinedload()` to fetch related data in a single query.
+If we add features like "get persona with recent events", we would use SQL JOINs or pg's query capabilities to fetch related data in a single query.
 
 ## 2. Horizontal Scaling Strategy
 
@@ -178,16 +178,16 @@ concurrency: 1  # One message at a time per instance
 **Improvements for Stronger Consistency:**
 
 1. **Two-Phase Processing:**
-   ```python
-   # Phase 1: Mark user as "processing"
-   processing_lock = await acquire_lock(user_id, tenant_id)
+   ```javascript
+   // Phase 1: Mark user as "processing"
+   const processingLock = await acquireLock(userId, tenantId);
    
-   # Phase 2: Generate persona
-   persona = await generate_persona(events)
+   // Phase 2: Generate persona
+   const persona = await generatePersona(events);
    
-   # Phase 3: Store persona and release lock
-   await store_persona(persona)
-   await release_lock(processing_lock)
+   // Phase 3: Store persona and release lock
+   await storePersona(persona);
+   await releaseLock(processingLock);
    ```
 
 2. **Idempotency Tokens:**

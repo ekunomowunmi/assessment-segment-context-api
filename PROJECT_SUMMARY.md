@@ -103,8 +103,8 @@ This is a complete implementation of the "Segment-to-Context" service as specifi
    - Worker service
 
 2. **Database Migrations**
-   - Alembic configuration
-   - Initial migration script
+   - Custom migration script (src/database/migrate.js)
+   - SQL migration files
 
 3. **CI/CD**
    - GitHub Actions workflow
@@ -127,9 +127,9 @@ backend/
 │   ├── components/ui/         # UI components
 │   └── lib/                   # API client & utilities
 ├── tests/                     # Test suite
-├── alembic/                   # Database migrations
+├── src/database/migrations.js # Database migrations
 ├── docker-compose.yml         # Local development
-├── requirements.txt           # Python dependencies
+├── package.json               # Node.js dependencies
 ├── AI_JOURNEY.md              # AI collaboration docs
 ├── SYSTEM_DESIGN.md           # Architecture docs
 └── README.md                  # Project documentation

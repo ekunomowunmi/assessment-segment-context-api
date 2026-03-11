@@ -1,4 +1,4 @@
-.PHONY: help setup install test test-cov migrate up down logs clean
+.PHONY: help setup install test test-cov migrate up down logs clean dev worker
 
 help:
 	@echo "Available commands:"
@@ -10,6 +10,8 @@ help:
 	@echo "  make logs       - View Docker logs"
 	@echo "  make test       - Run tests"
 	@echo "  make test-cov   - Run tests with coverage report"
+	@echo "  make dev        - Start development server"
+	@echo "  make worker     - Start context worker"
 	@echo "  make clean      - Clean up generated files"
 
 setup:
@@ -31,14 +33,19 @@ logs:
 	docker-compose logs -f
 
 test:
-	pytest
+	npm test
 
 test-cov:
-	pytest --cov=app --cov-report=html --cov-report=term-missing
+	npm test -- --coverage --coverageReporters=lcov --coverageReporters=html --coverageReporters=text
+
+dev:
+	npm run dev
+
+worker:
+	npm run worker
 
 clean:
-	find . -type d -name __pycache__ -exec rm -r {} +
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name ".pytest_cache" -exec rm -r {} +
-	find . -type d -name "htmlcov" -exec rm -r {} +
-	find . -type d -name ".coverage" -delete
+	rm -rf node_modules/.cache
+	rm -rf coverage
+	rm -rf .jest-cache
+	find . -type d -name "node_modules" -prune -o -name ".DS_Store" -type f -delete
