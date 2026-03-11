@@ -52,52 +52,55 @@ Requirements:
 - Generate structured JSON personas with specific fields
 - Handle API failures and network timeouts
 
-Use tenacity library for retry logic.
+Implement custom retry logic with exponential backoff.
 ```
 
 **Outcome:** The AI provided a comprehensive VertexAIService class with exponential backoff retry (up to 5 attempts), JSON extraction from markdown code blocks, and mock persona generation for development environments.
 
 ## AI Hallucination/Spaghetti Solution Correction
 
-### Instance: Initial Pub/Sub Worker Implementation
+### Instance: Pub/Sub Subscription Initialization
 
 **What Happened:**
-The AI initially suggested a synchronous Pub/Sub subscriber callback that would block the event loop, potentially causing performance issues under high load. The suggested implementation also didn't properly handle async database operations within the callback.
+The AI initially suggested creating a Pub/Sub subscription directly from the PubSub client without properly linking it to the topic. This caused issues where messages weren't being received because the subscription wasn't properly connected to the topic in the emulator.
 
 **The Problem:**
-```python
-# Initial suggestion (problematic)
-def callback(message):
-    # Synchronous database operations
-    event = store_event_sync(message.data)
-    # This blocks the event loop
+```javascript
+// Initial suggestion (problematic)
+this.pubsub = new PubSub({ projectId: this.projectId });
+this.subscription = this.pubsub.subscription(this.subscriptionName);
+// Subscription not linked to topic - messages won't be received
 ```
 
 **Correction:**
 I corrected this by:
-1. Using `asyncio.run()` within the callback to properly handle async operations
-2. Implementing proper session management with async context managers
-3. Adding comprehensive error handling with appropriate message acknowledgment/nack strategies
-4. Ensuring database transactions are properly committed or rolled back
+1. Creating the topic first and ensuring it exists
+2. Creating the subscription from the topic (not directly from PubSub client)
+3. Implementing proper async initialization to ensure topic and subscription are ready
+4. Adding error handling for subscription creation failures
 
 **Final Implementation:**
-```python
-async def process_message(self, message):
-    async with AsyncSessionLocal() as session:
-        try:
-            # Async operations
-            event = await self._store_event(session, event_data)
-            # ... rest of processing
-            message.ack()
-        except Exception as e:
-            await session.rollback()
-            message.nack()  # Retry on failure
+```javascript
+async initialize() {
+  // Get or create topic first
+  this.topic = this.pubsub.topic(config.pubsub.topicEvents);
+  await this.topic.get({ autoCreate: true });
+  
+  // Create subscription from topic (ensures proper linking)
+  this.subscription = this.topic.subscription(this.subscriptionName);
+  await this.subscription.get({ autoCreate: true });
+  
+  // Now subscription is properly linked to topic
+}
 
-def callback(self, message):
-    asyncio.run(self.process_message(message))
+start() {
+  this.subscription.on('message', (message) => {
+    this.processMessage(message).catch(console.error);
+  });
+}
 ```
 
-**Lesson Learned:** Always ensure async/await patterns are correctly implemented, especially when mixing synchronous Pub/Sub callbacks with async database operations. The event loop must be properly managed to avoid blocking.
+**Lesson Learned:** In Pub/Sub, subscriptions must be created from topics, not directly from the PubSub client. This ensures proper message routing, especially important when using the Pub/Sub emulator for local development.
 
 ## AI Tools Used
 
@@ -111,6 +114,6 @@ def callback(self, message):
 
 2. **Idempotency Strategy**: The AI suggested using a composite unique constraint on (event_id, tenant_id) rather than just event_id globally, which allows the same event_id to be reused across different tenants.
 
-3. **Retry Logic**: The exponential backoff pattern suggested by the AI (using tenacity) handles Vertex AI rate limits gracefully, with increasing wait times between retries.
+3. **Retry Logic**: The exponential backoff pattern implemented with custom retry logic handles Vertex AI rate limits gracefully, with increasing wait times between retries (base^attempt * 1000ms).
 
-4. **Testing Strategy**: The AI recommended using in-memory SQLite for tests to ensure fast test execution while maintaining SQLAlchemy compatibility.
+4. **Testing Strategy**: The AI recommended using Jest with mocked database connections for tests to ensure fast test execution while maintaining PostgreSQL query compatibility.
