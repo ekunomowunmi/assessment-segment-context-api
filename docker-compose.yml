@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: segment_context_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: segment_context
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Pub/Sub Emulator (for local development)
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    container_name: pubsub_emulator
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: segment_context_api
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=segment_context
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - ENVIRONMENT=development
+      - GCP_PROJECT_ID=local-project
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pubsub-emulator:
+        condition: service_started
+    volumes:
+      - ./src:/app/src
+    command: npm run dev
+
+  # Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: segment_context_worker
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=segment_context
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - ENVIRONMENT=development
+      - GCP_PROJECT_ID=local-project
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pubsub-emulator:
+        condition: service_started
+    volumes:
+      - ./src:/app/src
+    command: npm run worker
+
+volumes:
+  postgres_data:
